@@ -5,7 +5,10 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const ejs = require("ejs");
-const encrypt = require("mongoose-encryption");
+const bcrypt=require("bcrypt");
+const saltRounds = 10;
+// const md5=require("md5"); //for better security we provide hashing
+//const encrypt = require("mongoose-encryption"); //encrypted using AES-256-CBC 
 //const _=require("lodash"); //for captialize the string
 // const date = require(__dirname + "/date.js");
 
@@ -29,7 +32,7 @@ const userSchema=new mongoose.Schema({
 
 
 
-userSchema.plugin(encrypt, { secret:process.env.SECRET,encryptedFields: ["password"] });
+//userSchema.plugin(encrypt, { secret:process.env.SECRET,encryptedFields: ["password"] }); // For  encryption 
 
 const User =mongoose.model("User",userSchema);
 
@@ -45,9 +48,10 @@ app.get("/register",function(req,res){
 
 
 app.post("/register",function(req,res){
-  const newUser=new User({
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    const newUser=new User({
     email:req.body.username,
-    password:req.body.password
+    password:hash
   });
 
   newUser.save(function(err){
@@ -58,6 +62,9 @@ app.post("/register",function(req,res){
       res.render("secrets");
     }
   });
+    
+  });
+  
 });
 
 app.post("/login",function(req,res){
@@ -71,10 +78,16 @@ app.post("/login",function(req,res){
       else
       {
           if(foundUser){
-            if(foundUser.password === password)
-            {
-              res.render("secrets");
-            }
+            // if(foundUser.password === password)
+            // {
+              bcrypt.compare(req.body.password,foundUser.password, function(err, result) {
+                  if(result===true)
+                  {
+                    res.render("secrets");
+                  }
+              });
+              
+            //}
           }
       }
   });
